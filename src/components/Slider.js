@@ -33,36 +33,39 @@ class Slider extends React.Component {
 
   componentDidMount() {
     const {
-      children, cardsToShow: cardsToShowProp,
-      autoSlide, hideArrowsOnNoSlides,
+      children, cardsToShow: cardsToShowProp, autoSlide, hideArrowsOnNoSlides,
     } = this.props;
     const numberOfChildren = children ? children.length || 1 : 0;
     const cardsToShow = cardsToShowProp || numberOfChildren;
     const childWidth = 100 / cardsToShow;
-    this.setState({
-      childWidth,
-      cardsToShow,
-      hideArrows: hideArrowsOnNoSlides && numberOfChildren <= cardsToShow,
-    }, () => this.updateResponsiveView());
-    typeof window !== 'undefined' &&
-      window.addEventListener('resize', this.updateResponsiveView);
+    this.setState(
+      {
+        childWidth,
+        cardsToShow,
+        hideArrows: hideArrowsOnNoSlides && numberOfChildren <= cardsToShow,
+      },
+      () => this.updateResponsiveView(),
+    );
+    typeof window !== 'undefined' && window.addEventListener('resize', this.updateResponsiveView);
     if (autoSlide) {
-      this.autoSlider = new Timer(() => {
-        let updatedInitialCard = 0;
-        if (numberOfChildren - this.state.cardsToShow > this.state.initialCard) {
-          updatedInitialCard = this.state.initialCard + 1;
-        }
-        this.setState({
-          initialCard: updatedInitialCard,
-        });
-      }, (autoSlide === true ? 2000 : autoSlide));
+      this.autoSlider = new Timer(
+        () => {
+          let updatedInitialCard = 0;
+          if (numberOfChildren - this.state.cardsToShow > this.state.initialCard) {
+            updatedInitialCard = this.state.initialCard + 1;
+          }
+          this.setState({
+            initialCard: updatedInitialCard,
+          });
+        },
+        autoSlide === true ? 2000 : autoSlide,
+      );
       this.autoSlider.start();
     }
   }
 
   componentWillUnmount() {
-    typeof window !== 'undefined' && // eslint-disable-line no-unused-expressions
-      window.removeEventListener('resize', this.updateResponsiveView);
+    typeof window !== 'undefined' && window.removeEventListener('resize', this.updateResponsiveView); // eslint-disable-line no-unused-expressions
   }
 
   updateResponsiveView() {
@@ -77,7 +80,7 @@ class Slider extends React.Component {
           updatedCardsToShow = cardsToShow;
         }
       });
-      const updatedInitialCard = (numberOfChildren - updatedCardsToShow) < this.state.initialCard ? (numberOfChildren - updatedCardsToShow) : this.state.initialCard;
+      const updatedInitialCard = numberOfChildren - updatedCardsToShow < this.state.initialCard ? numberOfChildren - updatedCardsToShow : this.state.initialCard;
       this.setState({
         cardsToShow: updatedCardsToShow,
         childWidth: 100 / updatedCardsToShow,
@@ -92,48 +95,64 @@ class Slider extends React.Component {
     if (beforeSlide) {
       beforeSlide();
     }
-    this.setState({
-      initialCard,
-    }, () => {
-      if (afterSlide) {
-        afterSlide();
-      }
-    });
+    this.setState(
+      {
+        initialCard,
+      },
+      () => {
+        if (afterSlide) {
+          afterSlide();
+        }
+      },
+    );
   }
 
   handleLeftArrowClick(evt) {
-    const { children } = this.props;
+    const { children, leftClick } = this.props;
     const { cardsToShow } = this.state;
     const childrenCount = children ? children.length : 0;
-    if (evt && evt.preventDefault) { evt.preventDefault(); }
+    if (evt && evt.preventDefault) {
+      evt.preventDefault();
+    }
     let nextInitialCard = this.state.initialCard - 1;
     if (nextInitialCard < 0) {
       nextInitialCard = childrenCount - cardsToShow;
     }
     this.changeInitialCard(nextInitialCard);
+
+    if (leftClick) {
+      leftClick(1);
+    }
   }
 
   handleRightArrowClick(evt) {
-    const { children } = this.props;
+    const { children, rightClick } = this.props;
     const { cardsToShow } = this.state;
     const childrenCount = children ? children.length : 0;
-    if (evt && evt.preventDefault) { evt.preventDefault(); }
+    if (evt && evt.preventDefault) {
+      evt.preventDefault();
+    }
     let nextInitialCard = this.state.initialCard + 1;
     if (childrenCount - cardsToShow < nextInitialCard) {
       nextInitialCard = 0;
     }
+
     this.changeInitialCard(nextInitialCard);
+
+    if (rightClick) {
+      rightClick(1);
+    }
   }
 
   renderChildren(children) {
     const { childWidth } = this.state;
     const displayCards = [];
     React.Children.forEach(children, (child, index) => {
-      displayCards.push((
+      displayCards.push(
         <CardWrapper key={index} width={childWidth}>
           {child}
-        </CardWrapper>
-      ));
+        </CardWrapper>,
+      );
     });
     return displayCards;
   }
@@ -145,11 +164,13 @@ class Slider extends React.Component {
     let i;
     for (i = 0; i <= numberOfChildren - this.state.cardsToShow; i += 1) {
       const index = i;
-      dots.push(React.cloneElement(Dot, {
-        active: index === this.state.initialCard,
-        key: index,
-        onClick: () => this.changeInitialCard(index),
-      }));
+      dots.push(
+        React.cloneElement(Dot, {
+          active: index === this.state.initialCard,
+          key: index,
+          onClick: () => this.changeInitialCard(index),
+        }),
+      );
     }
     return dots;
   }
@@ -169,35 +190,25 @@ class Slider extends React.Component {
     const { initialCard, cardsToShow } = this.state;
     return React.cloneElement(RightArrow, {
       onClick: this.handleRightArrowClick,
-      disabled: !infinite && (initialCard + cardsToShow === numberOfChildren),
+      disabled: !infinite && initialCard + cardsToShow === numberOfChildren,
     });
   }
 
   render() {
     const {
-      children, cardsToShow,
-      showDots, showArrows,
-      pauseOnMouseOver, DotsWrapper,
-      ...otherProps
+      children, cardsToShow, showDots, showArrows, pauseOnMouseOver, DotsWrapper, ...otherProps
     } = this.props;
     const { initialCard, childWidth } = this.state;
     return (
-      <div
-        onMouseLeave={() => pauseOnMouseOver && this.autoSlider && this.autoSlider.resume()}
-        onMouseEnter={() => pauseOnMouseOver && this.autoSlider && this.autoSlider.pause()}
-      >
+      <div onMouseLeave={() => pauseOnMouseOver && this.autoSlider && this.autoSlider.resume()} onMouseEnter={() => pauseOnMouseOver && this.autoSlider && this.autoSlider.pause()}>
         <SliderWrapper {...otherProps}>
           {showArrows && !this.state.hideArrows && this.renderLeftArrow()}
           <SliderTrack>
-            <SliderList translateX={initialCard * childWidth}>
-              {this.renderChildren(children, cardsToShow || children.length)}
-            </SliderList>
+            <SliderList translateX={initialCard * childWidth}>{this.renderChildren(children, cardsToShow || children.length)}</SliderList>
           </SliderTrack>
           {showArrows && !this.state.hideArrows && this.renderRightArrow()}
         </SliderWrapper>
-        <DotsWrapper>
-          {showDots && this.renderDots()}
-        </DotsWrapper>
+        <DotsWrapper>{showDots && this.renderDots()}</DotsWrapper>
       </div>
     );
   }
@@ -213,6 +224,8 @@ Slider.defaultProps = {
   cardsToShow: null,
   afterSlide: null,
   beforeSlide: null,
+  rightClick: null,
+  leftClick: null,
   infinite: true,
   responsive: null,
   autoSlide: 2000,
@@ -232,15 +245,16 @@ Slider.propTypes = {
   cardsToShow: PropTypes.number,
   afterSlide: PropTypes.func,
   beforeSlide: PropTypes.func,
+  rightClick: PropTypes.func,
+  leftClick: PropTypes.func,
   infinite: PropTypes.bool,
-  responsive: PropTypes.arrayOf(PropTypes.shape({
-    breakPoint: PropTypes.number,
-    cardsToShow: PropTypes.number,
-  })),
-  autoSlide: PropTypes.oneOfType([
-    PropTypes.number,
-    PropTypes.bool,
-  ]),
+  responsive: PropTypes.arrayOf(
+    PropTypes.shape({
+      breakPoint: PropTypes.number,
+      cardsToShow: PropTypes.number,
+    }),
+  ),
+  autoSlide: PropTypes.oneOfType([PropTypes.number, PropTypes.bool]),
   pauseOnMouseOver: PropTypes.bool,
   padding: PropTypes.string,
   margin: PropTypes.string,
